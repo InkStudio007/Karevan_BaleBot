@@ -1,5 +1,6 @@
 from balethon import Client
 from balethon.conditions import private, at_state
+from SignUp_validation import *
 
 Bot = Client("815801327:OVUQjc5GFeURaJYgsP7VzMQYKmHdYngXMs4SXbsx")
 
@@ -7,7 +8,7 @@ SignUp_Datas = {
     "name" : [],
     "Phone_Number" : [],
     "Code_Meli" : [],
-    "Birth_Yeat" : []
+    "Age" : []
 }
 
 #Commands
@@ -22,6 +23,8 @@ async def Help(*, message):
     await message.reply("/SignUp")
 
 # SignUp Process
+SignUp_Data = []
+
 @Bot.on_message(at_state(None))
 @Bot.on_command(private)
 async def SignUp(*, message):
@@ -30,26 +33,53 @@ async def SignUp(*, message):
 
 @Bot.on_message(at_state("NAME"))
 async def name_state(message):
-    SignUp_Datas['name'].append(message.text)
-    await message.reply(SignUp_Datas['name'][0])
+    SignUp_Data.append(message.text)
     await message.reply("phone number?")
     message.author.set_state("PHONE NUMBER")
 
 @Bot.on_message(at_state("PHONE NUMBER"))
 async def phone_number_state(message):
-    SignUp_Datas['Phone_Number'].append(message.text)    
-    await message.reply("code meli?")
-    message.author.set_state("CODE MELI")
-
+    if validate_phone_number(message.text):
+        SignUp_Data.append(message.text)
+        await message.reply("code meli?")
+        message.author.set_state("CODE MELI")    
+    else:
+        await message.reply("the phone number isnt correct try again:")
+    
 @Bot.on_message(at_state("CODE MELI"))
 async def code_meli_state(message):
-    SignUp_Datas['Code_Meli'].append(message.text)
-    await message.reply("bithday year?")
-    message.author.set_state("BIRTHDAY YEAR")
-
-@Bot.on_message(at_state("BIRTHDAY YEAR"))
-async def birth_year_state(message):
-    SignUp_Datas['Birth_Year'].append(message.text)
+    if validate_code_meli(message.text):
+        SignUp_Data.append(message.text)
+        await message.reply("Age?")
+        message.author.set_state("AGE")
+    else:
+        await message.reply("the Code Meli isnt correct try again:")
 
     
+@Bot.on_message(at_state("AGE"))
+async def age_state(message):
+    if (validate_age(message.text)):
+        SignUp_Data.append(message.text)
+        await message.reply("SignUp Complete")
+        await message.reply(f"name: {SignUp_Data[0]}, phone number: {SignUp_Data[1]}, code meli: {SignUp_Data[2]}, Age: {SignUp_Data[3]} Do You Comfirm? (Yes/No)")
+        await message.author.set_state("SIGNUP_CONFIRMATION")
+    else:
+        await message.reply("the Age isnt correct try again:")
+
+@Bot.on_message(at_state("SIGNUP_CONFIRMATION"))
+async def SignUp_Confirmation_state(message):
+    if (str(message.text).capitalize() == "Yes" or str(message.text).capitalize() == "No"):
+        if (validate_SignUp(message.text)):
+            for x in SignUp_Data:
+                index = 0
+
+                SignUp_Keys = SignUp_Datas.keys()
+                SignUp_Datas[SignUp_Keys[index]].append(x)
+                index += 1
+        else:
+            await message.reply("You Can /SignUp Again")
+    else:
+        await message.reply("I Didnt Understand Try Again:")
+
+
 Bot.run()
