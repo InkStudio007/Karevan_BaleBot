@@ -1,5 +1,8 @@
 from balethon import Client
-from balethon.conditions import private, at_state
+from balethon.conditions import private, at_state, equals
+from docx import Document
+from docx.table import Table
+from balethon.objects import Message, CallbackQuery, InlineKeyboard
 from SignUp_validation import *
 
 Bot = Client("815801327:OVUQjc5GFeURaJYgsP7VzMQYKmHdYngXMs4SXbsx")
@@ -11,6 +14,12 @@ SignUp_Datas = {
     "Age" : []
 }
 
+def is_admin(user_id):
+    # لیست ID ادمین ها را در اینجا وارد کنید
+    admin_ids = [1828929996]
+    return user_id in admin_ids
+
+
 #Commands
 @Bot.on_command(private)
 async def start(*, message):
@@ -18,9 +27,27 @@ async def start(*, message):
         "Hello, I'm the commands bot Use /Help to see my commands"
     )
 
+
 @Bot.on_command(private)
 async def Help(*, message):
     await message.reply("/SignUp")
+
+
+@Bot.on_command(private)
+async def admin_panel(*, message):
+    if is_admin(user_id= message.author.id) == True:
+       await message.reply(
+           "پنل مدیریت",
+           InlineKeyboard(
+               [("دریافت اسامی مسافران.", "name_text")],
+               [("تعداد نفرات باقی مانده.", "remaining_capacity")],
+               [("پاک کردن تمام داده ها.", "clear_data")]
+            )
+        )
+       
+    else:
+        await message.reply("شما دسترسی به این دستور را ندارید.")
+
 
 # SignUp Process
 SignUp_Data = []
