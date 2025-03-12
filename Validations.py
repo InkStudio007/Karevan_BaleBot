@@ -1,5 +1,6 @@
 import phonenumbers
 
+
 def validate_phone_number(number):
     try:
         parsed_number = phonenumbers.parse(number, "IR") 
@@ -7,11 +8,13 @@ def validate_phone_number(number):
     except phonenumbers.NumberParseException:
         return False
 
+
 def validate_code_meli(code_meli):
     if str(code_meli).isdigit() and len(str(code_meli)) == 10:
         return True
     else:
         return False
+
 
 def validate_age(age):
     if str(age).isdigit() and 0 <= int(age) <= 120:
@@ -19,9 +22,24 @@ def validate_age(age):
     else:
         return False
 
-def validate_SignUp(Confirmation):
+
+def validate_confirm(Confirmation):
     if (str(Confirmation).capitalize() == "Yes"):
         return True
     elif (str(Confirmation).capitalize() == "No"):
         return False
+
+
+def validate_price(price):
+    if (str(price).isdigit()):
+        return True
+    else:
+        return False
+
+
+def validate_credit_card(card):
+    if (str(card).isdigit() and len(str(card)) == 16):
+        return True
+    else:
+        return False 
 
