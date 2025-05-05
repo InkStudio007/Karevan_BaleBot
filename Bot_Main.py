@@ -21,7 +21,8 @@ SignUp_count = 0
 setting_payment_message_id = 0
 signup_payment_message_id = 0
 
-bot = Client(token= "815801327:OVUQjc5GFeURaJYgsP7VzMQYKmHdYngXMs4SXbsx")
+Token= "815801327:OVUQjc5GFeURaJYgsP7VzMQYKmHdYngXMs4SXbsx"
+bot = Client(Token)
 
 
 #Checking for Payment Settings
