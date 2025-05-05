@@ -21,8 +21,7 @@ SignUp_count = 0
 setting_payment_message_id = 0
 signup_payment_message_id = 0
 
-Token= "815801327:OVUQjc5GFeURaJYgsP7VzMQYKmHdYngXMs4SXbsx"
-bot = Client(Token)
+bot = Client(os.environ["815801327:OVUQjc5GFeURaJYgsP7VzMQYKmHdYngXMs4SXbsx"])
 
 
 #Checking for Payment Settings
