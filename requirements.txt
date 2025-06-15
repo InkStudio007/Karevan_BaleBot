@@ -3,3 +3,4 @@ dotenv
 pandas
 asyncio
 phonenumbers
+openpyxl

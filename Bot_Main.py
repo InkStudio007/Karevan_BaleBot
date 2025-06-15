@@ -4,9 +4,10 @@ from balethon.conditions import private, at_state, equals, successful_payment
 from balethon.objects import Message, CallbackQuery, InlineKeyboard, InlineKeyboardButton, LabeledPrice
 from Validations import *
 from balethon.states.state_machine import StateMachine  
-import pandas as pd
+import pandas 
 import os
 from dotenv import load_dotenv
+import json
 
 
 #Variables
@@ -14,13 +15,14 @@ from dotenv import load_dotenv
 title, description, price, credit_card = "", "", "", ""
 Start_SignUp = False
 user_has_joined = False
-startpanel_description = "وارد نشده."
+start_panel_description = ""
 SignUp_capacity = "1"
 SignUp_count = 0
 setting_payment_message_id = 0
 signup_payment_message_id = 0
 CHANNEL_ID = 4858274378
-excel_file_path = os.path.abspath('لیست مسافران کاروان.xlsx')
+excel_file_path = 'لیست مسافران کاروان.xlsx'
+json_file_path = "signup_datas.json"
 
 load_dotenv()
 
@@ -37,14 +39,32 @@ def payment_settings_check():
         return True
 
 
-SignUp_Datas = {
-    "اسم" : [],
-    "شماره تلفن" : [],
-    "کدملی" : [],
-    "ت.ت" : []
-}
+# Load existing data or create empty structure
+
+if os.path.exists(json_file_path):
+    with open(json_file_path, "r", encoding="utf-8") as f:
+        SignUp_Datas = json.load(f)
+else:
+    SignUp_Datas = {
+        "Name": [],
+        "Phone_Number": [],
+        "Code_Meli": [],
+        "Age": []
+    }
 
 SignUp_Keys = ["Name", "Phone_Number", "Code_Meli", "Age"]
+
+
+#Creating or Updating the json file
+
+def save_signup_data_to_json():
+    with open(json_file_path, "w", encoding="utf-8") as f:
+        json.dump(SignUp_Datas, f, ensure_ascii=False, indent=2)
+
+save_signup_data_to_json()
+
+
+#Checking admin and membership of chanel
 
 def is_admin(user_id):
     # لیست ID ادمین ها را در اینجا وارد کنید
@@ -59,11 +79,6 @@ async def check_membership(chat_id, user_id):
     else:
         return False
 
-#exel code
-df = pd.DataFrame(SignUp_Datas)
-file_name = 'لیست مسافران کاروان.xlsx'
-new_index = range(1, len(df) + 1)
-df.index = new_index
 
 #Commands
 
@@ -86,7 +101,9 @@ async def admin_panel(*, message):
                 "پنل مدیریت",
                 InlineKeyboard(
                     [("شروع ثبت نام.", "start_signup")],
-                    [("تنظیمات پرداخت.", "payment_settings")]
+                    [("تنظیمات پرداخت.", "payment_settings")],
+                    [("دریافت اسامی مسافران.", "passengers_list")],
+                    [("حذف مسافر.", "remove_passenger")]
                 )
             )
     else:
@@ -103,7 +120,7 @@ async def start_core(message):
 
     if user_has_joined == True:
         await message.reply(
-            "برای ثبت نام روی دکمه زیر کلیک کن.",
+            start_panel_description,
             InlineKeyboard(
                 [("ثبت نام.", "SignUp")]
             )
@@ -132,9 +149,15 @@ async def admin_panel_callback_handler(callback_query):
     #Admin Panel CallBacks
 
     if callback_query.data == "passengers_list":
-        with open(excel_file_path, 'w') as excel_file:
-            df.to_excel(file_name, index=True, index_label='تعداد مسافران')
-            await bot.send_document(chat_id= callback_query.chat.id, document= excel_file)
+        with open(json_file_path, "r", encoding="utf-8") as f:
+            json_SignUp_Datas = json.load(f)
+
+        data_table = pandas.DataFrame(json_SignUp_Datas)
+        data_table.index += 1 
+
+        data_table.to_excel(excel_file_path, index_label="ردیف")
+
+        await bot.send_document(chat_id= callback_query.message.chat.id, document= open(excel_file_path, 'rb'))
         await callback_query.answer("لیست مسافران در قالب فایل اکسل فرستاده شد.")
 
     elif callback_query.data == "remove_passenger":
@@ -153,6 +176,16 @@ async def admin_panel_callback_handler(callback_query):
         callback_query.author.set_state("TITLE")
 
     elif callback_query.data == "start_signup":
+        global SignUp_Datas
+
+        SignUp_Datas = {
+            "Name": [],
+            "Phone_Number": [],
+            "Code_Meli": [],
+            "Age": []
+        }
+
+        save_signup_data_to_json()
 
         if (payment_settings_check()):
             await bot.send_message(chat_id= callback_query.message.chat.id ,text= "توضیحات سفر را وارد کنید.")
@@ -386,15 +419,12 @@ async def show_payment(message):
     print(f"{user.name}, paid {amount}")
 
     #adding client to the list
-    for x in SignUp_Data:
-        index = 0
+    for i in range(len(SignUp_Keys)):
+        SignUp_Datas[SignUp_Keys[i]].append(SignUp_Data[i])
 
-        SignUp_Datas[SignUp_Keys[index]].append(x)
-        index += 1
-
-    index = 0
     SignUp_count += 1 
     SignUp_Data.clear()
+    save_signup_data_to_json()
 
     await bot.send_message(chat_id= message.chat.id, text= "ثبت نام با موفقیت کامل شد.")
     await bot.send_message(chat_id= message.chat.id, text= "اگر میخواهید دوستان یا اشنایان خود را ثبت نام کنید میتوانید از دستور /start استفاده کنید.")
