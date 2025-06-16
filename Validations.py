@@ -31,11 +31,10 @@ def validate_confirm(Confirmation):
 
 
 def validate_price(price):
-    if (str(price).isdigit()):
+    if (str(price).isdigit() and int(price) > 0):
         return True
     else:
         return False
-
 
 def validate_credit_card(card):
     if (str(card).isdigit() and len(str(card)) == 16):
@@ -43,3 +42,8 @@ def validate_credit_card(card):
     else:
         return False 
 
+def validate_capacity(price):
+    if (str(price).isdigit() and int(price) > 0):
+        return True
+    else:
+        return False
