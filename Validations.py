@@ -16,11 +16,11 @@ def validate_code_meli(code_meli):
         return False
 
 
-def validate_age(age):
-    if str(age).isdigit() and 0 <= int(age) <= 120:
-        return True
-    else:
-        return False
+#def validate_age(age):
+    #if str(age).isdigit() and 0 <= int(age) <= 120:
+        #return True
+    #else:
+        #return False
 
 
 def validate_confirm(Confirmation):
