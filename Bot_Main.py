@@ -8,13 +8,13 @@ import pandas
 import os
 from dotenv import load_dotenv
 import json
-
+import jdatetime
 
 #Variables
 
 title, description, price, credit_card = "", "", "", ""
 Start_SignUp = False
-user_has_joined = False
+user_has_joined = {}
 start_panel_description = ""
 SignUp_capacity = "1"
 SignUp_count = 0
@@ -112,13 +112,13 @@ async def admin_panel(*, message):
 
 @bot.on_command(private)
 async def start(*, message):
-    await start_core(message)
+    await start_core(message, message.author.id)
 
 
-async def start_core(message):
+async def start_core(message, user_id):
     global SignUp_Data
-
-    if user_has_joined == True:
+    #user_id = message.from_user.id
+    if user_has_joined.get(user_id, False):
         await message.reply(
             start_panel_description,
             InlineKeyboard(
@@ -143,7 +143,7 @@ async def start_core(message):
 
 @bot.on_callback_query()
 async def admin_panel_callback_handler(callback_query):
-
+    user_id = callback_query.author.id
     callback_query.author.set_state("")
 
     #Admin Panel CallBacks
@@ -205,12 +205,11 @@ async def admin_panel_callback_handler(callback_query):
 
 
     elif callback_query.data == "join":
-        global user_has_joined
         is_member = await check_membership(CHANNEL_ID, callback_query.author.id)
         if is_member == True:
             await bot.delete_message(callback_query.message.chat.id , callback_query.message.id)
             await callback_query.answer('شما عضو کانال هستید. حالا میتوانید برای ثبت نام اقدام کنید.')
-            user_has_joined = True  
+            user_has_joined[user_id]= True  
             await start_core(callback_query.message)
             callback_query.author.set_state("")
 
@@ -353,7 +352,7 @@ async def phone_number_state(message):
 async def code_meli_state(message):
     if validate_code_meli(message.text):
         SignUp_Data.append(message.text)
-        await bot.send_message(chat_id= message.chat.id, text= "تاریخ تولدت رو وارد کن.")
+        await bot.send_message(chat_id= message.chat.id, text= "تاریخ تولدت رو با فرمت 01-06-1367 وارد کن.")
         message.author.set_state("AGE")
     else:
         await message.reply("کد ملیت معتبر نیست دوباره تلاش کن.")
@@ -361,15 +360,18 @@ async def code_meli_state(message):
 
 @bot.on_message(at_state("AGE"))
 async def age_state(message):
-    if (validate_age(message.text)):
-        SignUp_Data.append(message.text)
-                    
+    text = message.text
+    data_str = text.replace("/", "-")
+    try:
+        year, month, day = map(int, data_str.split("-"))
+        shamsi_data = jdatetime.date(year, month, day)
+        SignUp_Data.append(shamsi_data)
         await bot.send_message(chat_id= message.chat.id, text=
         f"اسم و فامیلیتون: {SignUp_Data[0]}, شماره تماستون: {SignUp_Data[1]}, کد ملیتون: {SignUp_Data[2]}, تاریخ تولدتون: {SignUp_Data[3]} \n اطلاعاتتون درسته؟ (Yes/No)"
         )
 
         message.author.set_state("SIGNUP_CONFIRMATION")
-    else:
+    except ValueError:
         await message.reply("تاریخ تولدتون معتبر نیست دوباره تلاش کنید.")
 
 
@@ -429,6 +431,7 @@ async def show_payment(message):
     await bot.send_message(chat_id= message.chat.id, text= "ثبت نام با موفقیت کامل شد.")
     await bot.send_message(chat_id= message.chat.id, text= "اگر میخواهید دوستان یا اشنایان خود را ثبت نام کنید میتوانید از دستور /start استفاده کنید.")
     message.author.set_state("") #reset state after payment
+
 
 
 bot.run()
