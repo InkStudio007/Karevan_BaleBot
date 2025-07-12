@@ -12,14 +12,14 @@ import jdatetime
 
 #Variables
 
-user_has_joined = {}
 setting_payment_message_id = 0
-signup_payment_message_id = 0
+signup_payment_message_ids = {}
 CHANNEL_ID = 4858274378
 excel_file_path = 'لیست مسافران کاروان.xlsx'
 signup_json_file_path = os.path.abspath("JsonFiles/signup_datas.json")
 payment_settings_json_file_path = os.path.abspath("JsonFiles/payment_settings_datas.json")
 startpanel_informations_json_file_path = os.path.abspath("JsonFiles/startpanel_informations_datas.json")
+userjoined_list_json_file_path = os.path.abspath("JsonFiles/userjoined_list.json")
 
 load_dotenv()
 
@@ -36,10 +36,10 @@ else:
         "Name": [],
         "Phone_Number": [],
         "Code_Meli": [],
-        "Age": []
+        "‌BirthDate": []
     }
 
-SignUp_Keys = ["Name", "Phone_Number", "Code_Meli", "Age"]
+SignUp_Keys = ["Name", "Phone_Number", "Code_Meli", "‌BirthDate"]
 
 
 if os.path.exists(payment_settings_json_file_path):
@@ -68,9 +68,16 @@ else:
     }
 
 
+if os.path.exists(userjoined_list_json_file_path):
+    with open(userjoined_list_json_file_path, "r", encoding="utf-8") as f:
+        user_joined_list = json.load(f)
+else:
+    user_joined_list = []
+
+
 #Creating or Updating json files functions
 
-
+"utf-8"
 def save_signup_data_to_json():
     with open(signup_json_file_path, "w", encoding="utf-8") as f:
         json.dump(SignUp_Datas, f, ensure_ascii=False, indent=2)
@@ -90,6 +97,14 @@ def save_startpanel_informations_data_to_json():
         json.dump(StartPanel_Informations_Datas, f, ensure_ascii=False, indent=2)
 
 save_startpanel_informations_data_to_json()
+
+
+def save_userjoined_list_data_to_json():
+    with open(userjoined_list_json_file_path, "w", encoding="utf-8") as f:
+        json.dump(user_joined_list, f, ensure_ascii=False, indent=2)
+
+save_userjoined_list_data_to_json()
+
 
 #Checking for Payment Settings
 
@@ -123,8 +138,8 @@ async def check_membership(chat_id, user_id):
 async def admin_panel(*, message):
     global StartPanel_Informations_Datas
 
-    if is_admin(user_id= message.author.id) == True:
-        if StartPanel_Informations_Datas["trip_is_start"] == True:
+    if is_admin(user_id= message.author.id):
+        if StartPanel_Informations_Datas["trip_is_start"]:
             await message.reply(
                 "پنل مدیریت",
                 InlineKeyboard(
@@ -149,15 +164,14 @@ async def admin_panel(*, message):
         await message.reply("شما دسترسی به این دستور را ندارید.")
 
 
-@bot.on_command(private)
+@bot.on_command(private) 
 async def start(*, message):
     await start_core(message, message.author.id)
 
 
 async def start_core(message, user_id):
-    global SignUp_Data
     #user_id = message.from_user.id
-    if user_has_joined.get(user_id, False):
+    if user_id in user_joined_list:
         await message.reply(
             "...",
             InlineKeyboard(
@@ -175,7 +189,7 @@ async def start_core(message, user_id):
         )
 
     message.author.set_state("")
-    SignUp_Data.clear()
+    User_SignUp_Data.pop(message.author.id, None)
 
 
 #CallBack Queryes
@@ -252,12 +266,15 @@ async def admin_panel_callback_handler(callback_query):
 
 
     elif callback_query.data == "join":
+        
         is_member = await check_membership(CHANNEL_ID, callback_query.author.id)
-        if is_member == True:
+
+        if is_member:            
             await bot.delete_message(callback_query.message.chat.id , callback_query.message.id)
             await callback_query.answer('شما عضو کانال هستید. حالا میتوانید برای ثبت نام اقدام کنید.')
-            user_has_joined[user_id]= True  
-            await start_core(callback_query.message)
+            user_joined_list.append(user_id)
+            save_userjoined_list_data_to_json()  
+            await start_core(callback_query.message, callback_query.message.chat.id)
             callback_query.author.set_state("")
 
         else:
@@ -370,7 +387,7 @@ async def credit_card_state(message):
 
         setting_payment_message_id = payment_message.id
 
-        await bot.send_message(chat_id= message.chat.id, text= "Do You confirm the payment settings (Yes/No)?")
+        await bot.send_message(chat_id= message.chat.id, text= "تنظیمات پرداخت را تایید میکنید؟ (بله/خیر)")
         message.author.set_state("PAYMENT_CONFIRMATION")
 
     else:
@@ -381,7 +398,7 @@ async def credit_card_state(message):
 async def payment_confirmation_state(message):
     global setting_payment_message_id
 
-    if str(message.text).capitalize() in ("Yes", "No"):
+    if str(message.text).capitalize() in ("Yes", "No", "بله", "خیر"):
 
         if validate_confirm(message.text):
 
@@ -406,18 +423,18 @@ async def payment_confirmation_state(message):
 
 # SignUp Process
 
-SignUp_Data = []
+User_SignUp_Data = {}
 
 @bot.on_message(at_state("NAME"))
 async def name_state(message):
-    SignUp_Data.append(message.text)
+    User_SignUp_Data[message.author.id] = [message.text]
     await bot.send_message(chat_id= message.chat.id, text= "شماره تماس رو وارد کنید.")
     message.author.set_state("PHONE_NUMBER")
 
 @bot.on_message(at_state("PHONE_NUMBER"))
 async def phone_number_state(message):
     if validate_phone_number(message.text):
-        SignUp_Data.append(message.text)
+        User_SignUp_Data[message.author.id].append(message.text)
 
         await bot.send_message(chat_id= message.chat.id, text= "کد ملیتون رو وارد کنید.")
         message.author.set_state("CODE_MELI")
@@ -428,24 +445,31 @@ async def phone_number_state(message):
 @bot.on_message(at_state("CODE_MELI"))
 async def code_meli_state(message):
     if validate_code_meli(message.text):
-        SignUp_Data.append(message.text)
+        User_SignUp_Data[message.author.id].append(message.text)
         await bot.send_message(chat_id= message.chat.id, text= "تاریخ تولدت رو با فرمت 01-06-1367 وارد کن.")
-        message.author.set_state("AGE")
+        message.author.set_state("BIRTHDATE")
     else:
         await message.reply("کد ملیت معتبر نیست دوباره تلاش کن.")
 
 
-@bot.on_message(at_state("AGE"))
+@bot.on_message(at_state("BIRTHDATE"))
 async def age_state(message):
-    text = message.text
-    data_str = text.replace("/", "-")
+    data_str = message.text.replace("/", "-")
+
     try:
         year, month, day = map(int, data_str.split("-"))
-        shamsi_data = jdatetime.date(year, month, day)
-        SignUp_Data.append(shamsi_data)
-        await bot.send_message(chat_id= message.chat.id, text=
-        f"اسم و فامیلیتون: {SignUp_Data[0]}, شماره تماستون: {SignUp_Data[1]}, کد ملیتون: {SignUp_Data[2]}, تاریخ تولدتون: {SignUp_Data[3]} \n اطلاعاتتون درسته؟ (Yes/No)"
+        shamsi_data = str(jdatetime.date(year, month, day))
+        User_SignUp_Data[message.author.id].append(shamsi_data)
+
+        data = User_SignUp_Data[message.author.id]
+        confirmation_message = (
+        f"اسم و فامیلیتون: {data[0]}, "
+        f"شماره تماستون: {data[1]}, "
+        f"کد ملیتون: {data[2]}, "
+        f"تاریخ تولدتون: {data[3]}\n"
+        f"اطلاعاتتون درسته؟ (بله/خیر)"
         )
+        await bot.send_message(chat_id=message.chat.id, text=confirmation_message)
 
         message.author.set_state("SIGNUP_CONFIRMATION")
     except ValueError:
@@ -454,24 +478,22 @@ async def age_state(message):
 
 @bot.on_message(at_state("SIGNUP_CONFIRMATION"))
 async def SignUp_Confirmation_state(message):
-    if str(message.text).capitalize() == "Yes" or str(message.text).capitalize() == "No":
+    if str(message.text).capitalize() in ("Yes", "No", "بله", "خیر"):
         if validate_confirm(message.text):
             message.author.set_state("PAYMENT")
             await payment_state(message)
         else:
             await message.reply("میتوانید دوباره با دستور /start ثبت نام کنید.")
             message.author.set_state("")
-            SignUp_Data.clear()
+            User_SignUp_Data.pop(message.author.id, None)
     else:
-        await message.reply("لطفا دوباره تلاش کنید.")
+        await message.reply("متوجه نشدم, لطفا دوباره تلاش کنید.")
 
 
 #Payment System
 
 
 async def payment_state(message):
-    global signup_payment_message_id
-
     await message.reply("در حال پردازش پرداخت...")
 
     payment_message = await bot.send_invoice(
@@ -483,14 +505,16 @@ async def payment_state(message):
         prices=[LabeledPrice(label="قیمت", amount= int(Payment_Settings_Datas['price']))]
     )
 
-    signup_payment_message_id = payment_message.id
+    signup_payment_message_ids[message.author.id] = payment_message.id
 
 
 @bot.on_message(successful_payment)
-async def show_payment(message):
-    global signup_payment_message_id
-    
-    await bot.delete_message(message.chat.id, signup_payment_message_id)
+async def show_payment(message):    
+    user_id = int(message.successful_payment.invoice_payload)
+
+    message_id = signup_payment_message_ids.pop(user_id, None)
+    if message_id:
+        await bot.delete_message(message.chat.id, message_id)
 
     user = await bot.get_chat(message.successful_payment.invoice_payload)
     amount = message.successful_payment.total_amount
@@ -498,16 +522,15 @@ async def show_payment(message):
 
     #adding client to the list
     for i in range(len(SignUp_Keys)):
-        SignUp_Datas[SignUp_Keys[i]].append(SignUp_Data[i])
+        SignUp_Datas[SignUp_Keys[i]].append(User_SignUp_Data[user_id][i])
 
     StartPanel_Informations_Datas["signup_count"] += 1 
-    SignUp_Data.clear()
+    User_SignUp_Data.pop(user_id, None)
     save_signup_data_to_json()
 
     await bot.send_message(chat_id= message.chat.id, text= "ثبت نام با موفقیت کامل شد.")
     await bot.send_message(chat_id= message.chat.id, text= "اگر میخواهید دوستان یا اشنایان خود را ثبت نام کنید میتوانید از دستور /start استفاده کنید.")
     message.author.set_state("") #reset state after payment
-
 
 
 bot.run()

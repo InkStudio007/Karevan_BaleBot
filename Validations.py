@@ -24,9 +24,9 @@ def validate_code_meli(code_meli):
 
 
 def validate_confirm(Confirmation):
-    if (str(Confirmation).capitalize() == "Yes"):
+    if (str(Confirmation).capitalize() in ["Yes", "بله"]):
         return True
-    elif (str(Confirmation).capitalize() == "No"):
+    elif (str(Confirmation).capitalize() in ["No", "خیر"]):
         return False
 
 
