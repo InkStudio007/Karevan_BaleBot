@@ -1,9 +1,14 @@
-from asyncio import BaseEventLoop
 from balethon import Client
-from balethon.conditions import private, at_state, equals, successful_payment
-from balethon.objects import Message, CallbackQuery, InlineKeyboard, InlineKeyboardButton, LabeledPrice
-from Validations import *
-from balethon.states.state_machine import StateMachine  
+from balethon.conditions import private, at_state, successful_payment
+from balethon.objects import InlineKeyboard, InlineKeyboardButton, LabeledPrice
+from Validations import (
+    validate_phone_number,
+    validate_code_meli,
+    validate_capacity,
+    validate_price,
+    validate_credit_card,
+    validate_confirm
+)
 import pandas 
 import os
 from dotenv import load_dotenv
@@ -67,17 +72,8 @@ else:
         "trip_is_start": False
     }
 
-
-if os.path.exists(userjoined_list_json_file_path):
-    with open(userjoined_list_json_file_path, "r", encoding="utf-8") as f:
-        user_joined_list = json.load(f)
-else:
-    user_joined_list = []
-
-
 #Creating or Updating json files functions
 
-"utf-8"
 def save_signup_data_to_json():
     with open(signup_json_file_path, "w", encoding="utf-8") as f:
         json.dump(SignUp_Datas, f, ensure_ascii=False, indent=2)
@@ -99,13 +95,6 @@ def save_startpanel_informations_data_to_json():
 save_startpanel_informations_data_to_json()
 
 
-def save_userjoined_list_data_to_json():
-    with open(userjoined_list_json_file_path, "w", encoding="utf-8") as f:
-        json.dump(user_joined_list, f, ensure_ascii=False, indent=2)
-
-save_userjoined_list_data_to_json()
-
-
 #Checking for Payment Settings
 
 
@@ -123,12 +112,13 @@ def is_admin(user_id):
     admin_ids = [403949029, 1828929996]
     return user_id in admin_ids
 
-async def check_membership(chat_id, user_id):
-    chat_member = await bot.get_chat_member(chat_id, user_id)
-    if chat_member.status in ("administrator", "member", "creator"):
-        join_chek = True
-        return True
-    else:
+async def check_user_membership(user_id):
+    try:
+        member = await bot.get_chat_member(CHANNEL_ID, user_id)
+        return member.status in ("member", "creator", "administrator")
+
+    except Exception as e:
+        print(f"Error checking user membership: {e}")
         return False
 
 
@@ -170,8 +160,7 @@ async def start(*, message):
 
 
 async def start_core(message, user_id):
-    #user_id = message.from_user.id
-    if user_id in user_joined_list:
+    if await check_user_membership(user_id):
         await message.reply(
             "...",
             InlineKeyboard(
@@ -180,11 +169,11 @@ async def start_core(message, user_id):
         )    
     else:
         await message.reply(
-            '''سلام به بات ثبت نام در کاروان زیارتی 313 خوش امدید
-            برای ادامه  ثبت نام اول عضو چنل شید و بعد روی دکمه(عضو شدم)کلیک کنید.''',       
+            "سلام به بات ثبت نام در کاروان زیارتی خوش امدید"
+            "برای ادامه ثبت نام اول عضو کانال شوید و بعد روی دکمه(عضو شدم)کلیک کنید.\n",
             InlineKeyboard(
-                [InlineKeyboardButton('چنل کاروان313', url='https://ble.ir/karevan_ziarati')],
-                [('عضو شد.', 'join')],
+                [InlineKeyboardButton('کانال کاروان', url='https://ble.ir/karevan_ziarati')],
+                [('عضو شدم.', 'join')],
             )
         )
 
@@ -195,7 +184,7 @@ async def start_core(message, user_id):
 #CallBack Queryes
 
 @bot.on_callback_query()
-async def admin_panel_callback_handler(callback_query):
+async def callback_handler(callback_query):
     global StartPanel_Informations_Datas, SignUp_Datas
     user_id = callback_query.author.id
 
@@ -266,15 +255,11 @@ async def admin_panel_callback_handler(callback_query):
 
 
     elif callback_query.data == "join":
-        
-        is_member = await check_membership(CHANNEL_ID, callback_query.author.id)
+        if await check_user_membership(user_id): 
 
-        if is_member:            
             await bot.delete_message(callback_query.message.chat.id , callback_query.message.id)
             await callback_query.answer('شما عضو کانال هستید. حالا میتوانید برای ثبت نام اقدام کنید.')
-            user_joined_list.append(user_id)
-            save_userjoined_list_data_to_json()  
-            await start_core(callback_query.message, callback_query.message.chat.id)
+            await start_core(callback_query.message, user_id)
             callback_query.author.set_state("")
 
         else:
