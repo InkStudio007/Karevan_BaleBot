@@ -1,6 +1,6 @@
 {
-  "description": "...",
+  "description": "Hey",
   "signup_capacity": 50,
   "signup_count": 0,
-  "trip_is_start": true
+  "trip_is_start": false
 }

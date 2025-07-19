@@ -1,7 +1,7 @@
 balethon
 dotenv
-pandas
-asyncio
 phonenumbers
-openpyxl
 jdatetime
+pandas
+openpyxl
+persiantools
